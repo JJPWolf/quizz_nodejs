@@ -1,8 +1,10 @@
 
 const http = require("http");
-const app = require("express")();
+
 const express = require("express")
 const path = require('path')
+
+const app = express();
 //bootstrap
 app.use('/css', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/css')))
 app.use('/js', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/js')))
