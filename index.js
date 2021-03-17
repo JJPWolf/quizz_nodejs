@@ -1,4 +1,5 @@
 
+let PORT = process.env.PORT || 9091;
 const http = require("http");
 
 const express = require("express")
@@ -12,7 +13,7 @@ app.use('/js', express.static(path.join(__dirname, 'node_modules/jquery/dist')))
 
 app.get("/", (req,res)=> res.sendFile(__dirname + "/index.html"))
 
-app.listen(9091, ()=>console.log("Listening on http port 9091"))
+app.listen(PORT, ()=>console.log("Listening on http port 9091"))
 const websocketServer = require("websocket").server
 const httpServer = http.createServer();
 httpServer.listen(9090, () => console.log("Listening.. on 9090"))
