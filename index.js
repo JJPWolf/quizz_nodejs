@@ -34,11 +34,20 @@ wsServer.on("request", request => {
         //a user want to create a new game
         if (result.method === "create") {
             const clientId = result.clientId;
+            const nbQuestions = result.nbQuestions;
+            const tpsQuestions = result.tpsQuestions;
             const gameId = guid();
             games[gameId] = {
                 "id": gameId,
                 "balls": 20,
-                "clients": []
+                "nbQuestions" : nbQuestions,
+                "tpsQuestions" : tpsQuestions,
+                "clients": [
+                    {
+                        "clientId" : clientId,
+                        "pseudo" : clients[clientId].pseudo
+                    }
+                ]
             }
 
             const payLoad = {
@@ -48,6 +57,12 @@ wsServer.on("request", request => {
 
             const con = clients[clientId].connection;
             con.send(JSON.stringify(payLoad));
+        }
+
+        if(result.method === "setPseudo"){
+            const clientId = result.clientId;
+            const pseudo = result.pseudo;
+            clients[clientId].pseudo = pseudo;
         }
 
         //a client want to join
@@ -93,11 +108,12 @@ wsServer.on("request", request => {
         }
 
     })
-
+    
     //generate a new clientId
     const clientId = guid();
     clients[clientId] = {
-        "connection":  connection
+        "connection":  connection,
+        "pseudo" : ""
     }
 
     const payLoad = {
@@ -136,3 +152,33 @@ function S4() {
  
 // then to call it, plus stitch in '4' in the third group
 const guid = () => (S4() + S4() + "-" + S4() + "-4" + S4().substr(0,3) + "-" + S4() + "-" + S4() + S4() + S4()).toLowerCase();
+
+const JSONQuestions  = [
+    {
+        cat : "Animaux",
+        questions : [
+            "https://www.kiwime.com/oqdb/files/3237929525/OpenQuizzDB_237/openquizzdb_237.json",
+            "https://www.kiwime.com/oqdb/files/2175987377/OpenQuizzDB_175/openquizzdb_175.json",
+            "https://www.kiwime.com/oqdb/files/2184784477/OpenQuizzDB_184/openquizzdb_184.json",
+            "https://www.kiwime.com/oqdb/files/1049854563/OpenQuizzDB_049/openquizzdb_49.json",
+            "https://www.kiwime.com/oqdb/files/2173877467/OpenQuizzDB_173/openquizzdb_173.json",
+            "https://www.kiwime.com/oqdb/files/5413686632/OpenQuizzDB_413/openquizzdb_413.json",
+            "https://www.kiwime.com/oqdb/files/1048723782/OpenQuizzDB_048/openquizzdb_48.json",
+            "https://www.kiwime.com/oqdb/files/1048723782/OpenQuizzDB_048/openquizzdb_48.json",
+            "https://www.kiwime.com/oqdb/files/2145399587/OpenQuizzDB_145/openquizzdb_145.json",
+            "https://www.kiwime.com/oqdb/files/1010726823/OpenQuizzDB_010/openquizzdb_10.json"
+        ]
+    },
+    {
+        cat : "Art et archéologie",
+        questions : [
+            "https://www.kiwime.com/oqdb/files/1086624389/OpenQuizzDB_086/openquizzdb_86.json",
+            "https://www.kiwime.com/oqdb/files/2156553397/OpenQuizzDB_156/openquizzdb_156.json",
+            "https://www.kiwime.com/oqdb/files/2183543422/OpenQuizzDB_183/openquizzdb_183.json",
+            "https://www.kiwime.com/oqdb/files/2128644638/OpenQuizzDB_128/openquizzdb_128.json",
+            "https://www.kiwime.com/oqdb/files/1069848949/OpenQuizzDB_069/openquizzdb_69.json",
+            ""
+        ]
+    }
+
+]
