@@ -63,7 +63,6 @@
         const nbQuestions = document.getElementById("nbQuestions");
         const tpsQuestions = document.getElementById("tpsQuestions");
         const divGameId = document.getElementById("divGameId");
-        
         if (form.attachEvent) {
             form.attachEvent("submit", processForm);
         } else {
@@ -96,7 +95,6 @@
                 "clientId": clientId,
                 "gameId": gameId
             }
-
             ws.send(JSON.stringify(payLoad));
 
         })
