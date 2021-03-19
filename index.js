@@ -38,7 +38,8 @@ const server = express();
   server.use('/css', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/css')))
   server.use('/js', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/js')))
   server.use('/js', express.static(path.join(__dirname, 'node_modules/jquery/dist')))
-  server.use((req, res) => res.sendFile(INDEX, { root: __dirname }))
+  //server.use((req, res) => res.sendFile(INDEX, { root: __dirname }))
+  server.get("/", (req,res)=> res.sendFile(__dirname + "/index.html"))
   let httpServer = server.listen(PORT, () => console.log(`Listening on ${PORT}`));
 
 //hashmap clients
