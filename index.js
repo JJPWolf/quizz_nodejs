@@ -33,7 +33,7 @@ const { Server } = require('ws');
 const path = require('path')
 const PORT = process.env.PORT || 3000;
 const INDEX = '/index.html';
-
+console.log(PORT);
 const server = express();
   server.use('/css', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/css')))
   server.use('/js', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/js')))
