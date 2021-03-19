@@ -52,10 +52,7 @@ wss.on('connection', (ws) => {
     
     ws.on('close', () => console.log('Client disconnected'));
     ws.on("message", message => {
-            
-            console.log(message);
             const result = JSON.parse(message)
-            console.log(result);
             //I have received a message from the client
             //a user want to create a new game
             if (result.method === "create") {
