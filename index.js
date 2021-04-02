@@ -27,7 +27,7 @@ const wsServer = new websocketServer({
 })
 */
 'use strict';
-
+const https = require('https');
 const express = require('express');
 const { Server } = require('ws');
 const path = require('path')
@@ -36,10 +36,12 @@ const INDEX = '/index.html';
 console.log(PORT);
 const server = express();
   server.use('/css', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/css')))
+  server.use('/css', express.static(path.join(__dirname, 'css/style.css')))
   server.use('/js', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/js')))
   server.use('/js', express.static(path.join(__dirname, 'node_modules/jquery/dist')))
   //server.use((req, res) => res.sendFile(INDEX, { root: __dirname }))
-  server.get("/", (req,res)=> res.sendFile(__dirname + "/index.html"))
+  //server.get("/", (req,res)=> res.sendFile(__dirname + "/public/index.html"))
+  server.use('/', express.static('public'));
   let httpServer = server.listen(PORT, () => console.log(`Listening on ${PORT}`));
 
 //hashmap clients
@@ -62,22 +64,22 @@ wss.on('connection', (ws) => {
                 const gameId = guid();
                 games[gameId] = {
                     "id": gameId,
-                    "balls": 20,
+                    "creatorId" : clientId,
                     "nbQuestions" : nbQuestions,
                     "tpsQuestions" : tpsQuestions,
-                    "clients": [
-                        {
-                            "clientId" : clientId,
-                            "pseudo" : clients[clientId].pseudo
-                        }
-                    ]
+                    "clients": [{
+                        "clientId" : clientId,
+                        "pseudo" : clients[clientId].pseudo,
+                        "ready" : false,
+                        "score" : 0
+                    }]
                 }
-    
+
                 const payLoad = {
                     "method": "create",
                     "game" : games[gameId]
                 }
-    
+
                 const con = clients[clientId].connection;
                 con.send(JSON.stringify(payLoad));
             }
@@ -94,19 +96,12 @@ wss.on('connection', (ws) => {
                 const clientId = result.clientId;
                 const gameId = result.gameId;
                 const game = games[gameId];
-                if (game.clients.length >= 3) 
-                {
-                    //sorry max players reach
-                    return;
-                }
-                const color =  {"0": "Red", "1": "Green", "2": "Blue"}[game.clients.length]
                 game.clients.push({
-                    "clientId": clientId,
-                    "color": color
-                })
-                //start the game
-                if (game.clients.length === 3) updateGameState();
-    
+                    "clientId" : clientId,
+                    "pseudo": clients[clientId].pseudo,
+                    "ready" : false,
+                    "score" : 0
+                });
                 const payLoad = {
                     "method": "join",
                     "game": game
@@ -130,7 +125,48 @@ wss.on('connection', (ws) => {
                 
             }
         
+            if(result.method === "startGame"){
+                const gameId = result.gameId;
+                const creatorId = result.clientId;
 
+                if(games[gameId].creatorId === creatorId){   
+                    const payLoad = {
+                        "method" : "startGame",
+                    }
+                    games[gameId].clients.forEach((client)=>{
+                        clients[client.clientId].connection.send(JSON.stringify(payLoad))
+                    })
+                }
+            }
+
+            if(result.method === "ready"){
+                const clientId = result.clientId;
+                const gameId = result.gameId;
+                console.log(games[gameId].clients);
+                let i=0;
+                games[gameId].clients.forEach((client)=>{
+                    if(client.clientId === clientId){
+                        client.ready=true;
+                    }
+                    if(client.ready===true){
+                        i++;
+                    }
+                });
+                if(i == games[gameId].clients.length){
+                    startGame(games[gameId]);
+                }
+            }
+
+        if(result.method === "goodAnswer"){
+            const clientId = result.clientId;
+            const gameId = result.gameId;
+            const points = result.points;
+            games[gameId].clients.forEach((client)=>{
+                if(client.clientId === clientId){
+                    client.score+=parseInt(points);
+                }
+            })
+        }
     })
     //generate a new clientId
     const clientId = guid();
@@ -147,112 +183,72 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify(payLoad))
     
 });
-/*
-wss.on("request", request => {
-    console.log("Handling request from " + request.origin);
-    //connect
-    const connection = request.accept(null, request.origin);
-    connection.on("open", () => console.log("opened!"))
-    connection.on("close", () => console.log("closed!"))
-    connection.on("message", message => {
-        const result = JSON.parse(message.utf8Data)
-        console.log(result);
-        //I have received a message from the client
-        //a user want to create a new game
-        if (result.method === "create") {
-            const clientId = result.clientId;
-            const nbQuestions = result.nbQuestions;
-            const tpsQuestions = result.tpsQuestions;
-            const gameId = guid();
-            games[gameId] = {
-                "id": gameId,
-                "balls": 20,
-                "nbQuestions" : nbQuestions,
-                "tpsQuestions" : tpsQuestions,
-                "clients": [
-                    {
-                        "clientId" : clientId,
-                        "pseudo" : clients[clientId].pseudo
-                    }
-                ]
-            }
+function startGame(game){
+    const tpsQuestions = game.tpsQuestions;
+    const clients = game.clients;
+    const nbQuestions = game.nbQuestions;
+    setDelaySendQuestion((parseInt(tpsQuestions)+5)*1000,clients,tpsQuestions,nbQuestions);
 
-            const payLoad = {
-                "method": "create",
-                "game" : games[gameId]
-            }
+}
 
-            const con = clients[clientId].connection;
-            con.send(JSON.stringify(payLoad));
-        }
-
-        if(result.method === "setPseudo"){
-            const clientId = result.clientId;
-            const pseudo = result.pseudo;
-            clients[clientId].pseudo = pseudo;
-        }
-
-        //a client want to join
-        if (result.method === "join") {
-
-            const clientId = result.clientId;
-            const gameId = result.gameId;
-            const game = games[gameId];
-            if (game.clients.length >= 3) 
-            {
-                //sorry max players reach
-                return;
-            }
-            const color =  {"0": "Red", "1": "Green", "2": "Blue"}[game.clients.length]
-            game.clients.push({
-                "clientId": clientId,
-                "color": color
-            })
-            //start the game
-            if (game.clients.length === 3) updateGameState();
-
-            const payLoad = {
-                "method": "join",
-                "game": game
-            }
-            //loop through all clients and tell them that people has joined
-            game.clients.forEach(c => {
-                clients[c.clientId].connection.send(JSON.stringify(payLoad))
-            })
-        }
-        //a user plays
-        if (result.method === "play") {
-            const gameId = result.gameId;
-            const ballId = result.ballId;
-            const color = result.color;
-            let state = games[gameId].state;
-            if (!state)
-                state = {}
-            
-            state[ballId] = color;
-            games[gameId].state = state;
-            
-        }
-
-    })
+function sendNewQuestion(clientsGame, tpsQuestions){
+    console.log(clients);
+    let randCat = Math.floor(Math.random() * JSONQuestions.length);
+    console.log(randCat);
+    let randSerie = Math.floor(Math.random() * JSONQuestions[randCat].questions.length);
+    console.log(randSerie);
+    let jsonFile = JSONQuestions[randCat].questions[randSerie];
+    console.log(jsonFile);
+    https.get(jsonFile,(res) => {
+        let body = "";
     
-    //generate a new clientId
-    const clientId = guid();
-    clients[clientId] = {
-        "connection":  connection,
-        "pseudo" : ""
-    }
+        res.on("data", (chunk) => {
+            body += chunk;
+        });
+    
+        res.on("end", () => {
+            try {
+                let json = JSON.parse(body);
+                let difficulte = {0 : "débutant", 1 : "confirmé", 2 : "expert"};
+                let randomDiff = Math.floor(Math.random()*3);
+                let question = json.quizz.fr[difficulte[randomDiff]][Math.floor(Math.random()*json.quizz.fr[difficulte[randomDiff]].length)];
+                const payLoad = {
+                    "method" : 'newQuestion',
+                    "question" : question,
+                    "temps" : tpsQuestions
+                }
+                clientsGame.forEach((client)=>{
+                    clients[client.clientId].connection.send(JSON.stringify(payLoad))
+                });
+            } catch (error) {
+                console.error(error.message);
+            };
+        });
+    
+    }).on("error", (error) => {
+        console.error(error.message);
+    });
+}
 
+function setDelaySendQuestion(tps, clients, tpsQuestions,nbQuestion){
+    updateScore(clients);
+    sendNewQuestion(clients, tpsQuestions);
+    if(nbQuestion > 0){
+        setTimeout(function(){
+            setDelaySendQuestion(tps,clients,tpsQuestions,nbQuestion--);  
+        }, tps);
+    }
+}
+
+function updateScore(clientsGame){
     const payLoad = {
-        "method": "connect",
-        "clientId": clientId
+        "method" : 'updateScore',
+        "clients" : clientsGame
     }
-    //send back the client connect
-    connection.send(JSON.stringify(payLoad))
-
-})
-*/
-
+    clientsGame.forEach((client)=>{
+        clients[client.clientId].connection.send(JSON.stringify(payLoad))
+    });
+}
 function updateGameState(){
 
     //{"gameid", fasdfsf}
@@ -304,7 +300,6 @@ const JSONQuestions  = [
             "https://www.kiwime.com/oqdb/files/2183543422/OpenQuizzDB_183/openquizzdb_183.json",
             "https://www.kiwime.com/oqdb/files/2128644638/OpenQuizzDB_128/openquizzdb_128.json",
             "https://www.kiwime.com/oqdb/files/1069848949/OpenQuizzDB_069/openquizzdb_69.json",
-            ""
         ]
     }
 
